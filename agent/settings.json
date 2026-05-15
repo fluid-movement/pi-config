@@ -1,0 +1,10 @@
+{
+  "defaultModel": "devstral-2512",
+  "defaultProvider": "mistral",
+  "lastChangelogVersion": "0.74.0",
+  "packages": [
+    "npm:pi-web-access"
+  ],
+  "defaultThinkingLevel": "high",
+  "theme": "dark"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "plan-mode",
+  "version": "1.0.0",
+  "description": "Unified Plan Mode Extension with Claude-style workflow",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "files": [
+    "index.ts",
+    "types.ts",
+    "utils.ts",
+    "workflow.ts",
+    "interview.ts"
+  ],
+  "keywords": [
+    "pi",
+    "pi-package",
+    "extension",
+    "plan-mode"
+  ],
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "license": "MIT"
+}
