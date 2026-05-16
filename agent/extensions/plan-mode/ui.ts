@@ -4,24 +4,23 @@
 
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { PlanState } from "./state.js";
+import type { Todo } from "../todos.js";
 
-export function updateStatus(ctx: ExtensionContext, state: PlanState): void {
-  const { planModeEnabled, executionMode, todoItems } = state;
+export function updateStatus(ctx: ExtensionContext, state: PlanState, todos: readonly Todo[] = []): void {
+  const { planModeEnabled, executionMode } = state;
 
-  // Footer badge
-  if (executionMode && todoItems.length > 0) {
-    const completed = todoItems.filter((t) => t.completed).length;
-    ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("accent", `📋 ${completed}/${todoItems.length}`));
+  if (executionMode && todos.length > 0) {
+    const completed = todos.filter((t) => t.done).length;
+    ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("accent", `📋 ${completed}/${todos.length}`));
   } else if (planModeEnabled) {
     ctx.ui.setStatus("plan-mode", ctx.ui.theme.fg("warning", "⏸ plan"));
   } else {
     ctx.ui.setStatus("plan-mode", undefined);
   }
 
-  // Todo widget above editor
-  if (executionMode && todoItems.length > 0) {
-    const lines = todoItems.map((item) => {
-      if (item.completed) {
+  if (executionMode && todos.length > 0) {
+    const lines = todos.map((item) => {
+      if (item.done) {
         return ctx.ui.theme.fg("success", "☑ ") + ctx.ui.theme.fg("muted", ctx.ui.theme.strikethrough(item.text));
       }
       return `${ctx.ui.theme.fg("muted", "☐ ")}${item.text}`;

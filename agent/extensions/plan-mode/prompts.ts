@@ -2,8 +2,6 @@
  * System prompt constants for plan mode and execution mode.
  */
 
-import type { TodoItem } from "./todos.js";
-
 export const PLAN_MODE_PROMPT = `[PLAN MODE ACTIVE]
 You are in plan mode — a read-only exploration mode for safe code analysis.
 
@@ -16,23 +14,18 @@ Goals:
 - Explore the codebase and clarify the user's intent freely
 - Ask clarifying questions when requirements are ambiguous
 - Propose an approach and identify which files would need to change
-- Create a detailed numbered plan under a "Plan:" header when ready:
+- When you have a solid plan, present it to the user and call the \`todo\` tool
+  once per step (action: "add") to record each step in order.
 
-Plan:
-1. First step description
-2. Second step description
-...
+Do NOT attempt to make changes — just describe what you would do and record the steps.`;
 
-Do NOT attempt to make changes — just describe what you would do.
-When the plan is solid, present it and await the user's decision.`;
-
-export function executionPrompt(remaining: readonly TodoItem[]): string {
-  const todoList = remaining.map((t) => `${t.step}. ${t.text}`).join("\n");
+export function executionPrompt(todos: ReadonlyArray<{ id: number; text: string }>): string {
+  const todoList = todos.map((t) => `#${t.id}: ${t.text}`).join("\n");
   return `[EXECUTING PLAN — Full tool access enabled]
 
 Remaining steps:
 ${todoList}
 
-Execute each step in order. After completing a step, call the mark_step_done tool
-with the step number before moving on to the next step.`;
+Execute each step in order. After completing a step, call \`todo\` with action "toggle"
+and the step's id before moving on to the next step.`;
 }
