@@ -33,6 +33,6 @@ export function executionPrompt(remaining: readonly TodoItem[]): string {
 Remaining steps:
 ${todoList}
 
-Execute each step in order. After completing a step, include a [DONE:n] tag
-(where n is the step number) somewhere in your response text.`;
+Execute each step in order. After completing a step, call the mark_step_done tool
+with the step number before moving on to the next step.`;
 }

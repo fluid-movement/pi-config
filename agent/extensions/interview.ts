@@ -1,5 +1,6 @@
 import { defineTool, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { Editor, type EditorTheme, Key, matchesKey, Text, truncateToWidth } from "@earendil-works/pi-tui";
 
 const OTHER = "Other (type your own)…";
 
@@ -91,7 +92,6 @@ const askUserTool = defineTool({
     const text = answers
       .map(({ question, answer }) => `Q: ${question}\nA: ${answer}`)
       .join("\n\n");
-
     return {
       content: [{ type: "text" as const, text }],
       isError: false,
@@ -104,16 +104,6 @@ const INTERVIEW_PROMPT =
   "you MUST call the `ask_user` tool instead of writing the question inline in your response. " +
   "Never list options in chat — always use `ask_user`.";
 
-function extractText(message: any): string {
-  const content = message?.content;
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content
-    .filter((c: any) => c.type === "text")
-    .map((c: any) => c.text as string)
-    .join("");
-}
-
 export default function interviewExtension(pi: ExtensionAPI): void {
   pi.registerTool(askUserTool);
 
@@ -121,41 +111,22 @@ export default function interviewExtension(pi: ExtensionAPI): void {
     systemPrompt: event.systemPrompt + "\n\n" + INTERVIEW_PROMPT,
   }));
 
-  // Enforcement: detect inline questions, blank their display, and send a hidden
-  // correction so the model retries with ask_user.
-  let correcting = false;
-  let pendingCorrection = false;
-
   pi.on("message_end", async (event, _ctx) => {
     const msg = event.message as any;
     if (msg.role !== "assistant") return;
-    // Skip if this message contains tool calls — the model was doing real work.
-    if (Array.isArray(msg.content) && msg.content.some((c: any) => c.type === "tool_use")) return;
+    if (!Array.isArray(msg.content)) return;
 
-    const text = extractText(msg).trim();
-    if (!text || !text.includes("?") || text.length > 800) return;
-
-    pendingCorrection = true;
-    // Blank the rendered content so the inline question disappears from the TUI.
-    return { message: { ...msg, content: [{ type: "text" as const, text: "" }] } };
-  });
-
-  pi.on("turn_end", async (event, _ctx) => {
-    if (!pendingCorrection) return;
-    pendingCorrection = false;
-
-    if (correcting) { correcting = false; return; }
-    if (event.toolResults.length > 0) return;
-
-    correcting = true;
-    // display: false hides this from the TUI while still delivering it to the LLM.
-    pi.sendMessage(
-      {
-        customType: "interview-correction",
-        content: "You asked a clarifying question inline. Use the `ask_user` tool instead — do not write questions in chat.",
-        display: false,
-      },
-      { triggerTurn: true, deliverAs: "nextTurn" },
+    // Only act when the model actually called ask_user.
+    const hasAskUser = msg.content.some(
+      (c: any) => c.type === "tool_use" && c.name === "ask_user"
     );
+    if (!hasAskUser) return;
+
+    // Blank any preamble text so only the interactive widget is shown.
+    const stripped = msg.content.map((c: any) =>
+      c.type === "text" ? { ...c, text: "" } : c
+    );
+    return { message: { ...msg, content: stripped } };
   });
+
 }

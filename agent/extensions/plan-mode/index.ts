@@ -1,7 +1,8 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { defineTool, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { Type } from "@sinclair/typebox";
 import { Key } from "@earendil-works/pi-tui";
 import { decide } from "./safety.js";
-import { extractTodoItems, markCompletedSteps } from "./todos.js";
+import { extractTodoItems } from "./todos.js";
 import { PLAN_MODE_PROMPT, executionPrompt } from "./prompts.js";
 import {
   type PlanState,
@@ -15,14 +16,42 @@ import { updateStatus, askApproval, askRefinement } from "./ui.js";
 
 const PLAN_MODE_TOOLS = ["read", "bash", "grep", "find", "ls"] as const;
 const NORMAL_MODE_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"] as const;
+const EXECUTION_MODE_TOOLS = [...NORMAL_MODE_TOOLS, "mark_step_done"] as const;
 
 export default function planModeExtension(pi: ExtensionAPI): void {
   let state: PlanState = { ...EMPTY_STATE };
 
+  const markStepDoneTool = defineTool({
+    name: "mark_step_done",
+    label: "Mark step done",
+    description: "Mark a plan step as completed. Call this after finishing each step during plan execution.",
+    parameters: Type.Object({
+      step: Type.Number({ description: "The step number to mark as complete" }),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx: ExtensionContext) {
+      const item = state.todoItems.find((t) => t.step === params.step);
+      if (!item) {
+        return {
+          content: [{ type: "text" as const, text: `Step ${params.step} not found in plan.` }],
+          isError: true,
+        };
+      }
+      item.completed = true;
+      updateStatus(ctx, state);
+      persistState(pi, state);
+      return {
+        content: [{ type: "text" as const, text: `Step ${params.step} marked as done.` }],
+        isError: false,
+      };
+    },
+  });
+
   // ── Helpers ─────────────────────────────────────────────────────────────────
 
   function applyToolSet(): void {
-    pi.setActiveTools(state.planModeEnabled ? [...PLAN_MODE_TOOLS] : [...NORMAL_MODE_TOOLS]);
+    if (state.planModeEnabled) pi.setActiveTools([...PLAN_MODE_TOOLS]);
+    else if (state.executionMode) pi.setActiveTools([...EXECUTION_MODE_TOOLS]);
+    else pi.setActiveTools([...NORMAL_MODE_TOOLS]);
   }
 
   function toggle(ctx: ExtensionContext): void {
@@ -39,6 +68,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
   }
 
   // ── Registration ─────────────────────────────────────────────────────────────
+
+  pi.registerTool(markStepDoneTool);
 
   pi.registerFlag("plan", {
     description: "Start in plan mode (read-only exploration)",
@@ -141,22 +172,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     };
   });
 
-  // Track [DONE:n] markers during execution.
-  pi.on("turn_end", async (event, ctx) => {
-    if (!state.executionMode || state.todoItems.length === 0) return;
-
-    const msg = event.message as { role?: string; content?: unknown };
-    if (msg.role !== "assistant" || !Array.isArray(msg.content)) return;
-
-    const text = (msg.content as Array<{ type?: string; text?: string }>)
-      .filter((b) => b.type === "text")
-      .map((b) => b.text ?? "")
-      .join("\n");
-
-    if (markCompletedSteps(text, state.todoItems) > 0) updateStatus(ctx, state);
-    persistState(pi, state);
-  });
-
   pi.on("agent_end", async (event, ctx) => {
     // Check if execution is complete.
     if (state.executionMode && state.todoItems.length > 0) {
@@ -216,7 +231,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
     if (choice === "execute") {
       const todos = state.todoItems;
       state = { planModeEnabled: false, executionMode: todos.length > 0, todoItems: todos };
-      pi.setActiveTools([...NORMAL_MODE_TOOLS]);
+      pi.setActiveTools([...EXECUTION_MODE_TOOLS]);
       updateStatus(ctx, state);
       const execMessage =
         todos.length > 0

@@ -1,10 +1,10 @@
 {
-  "defaultModel": "devstral-2512",
-  "defaultProvider": "mistral",
+  "defaultModel": "claude-sonnet-4-6",
+  "defaultProvider": "anthropic",
   "lastChangelogVersion": "0.74.0",
   "packages": [
     "npm:pi-web-access"
   ],
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "theme": "dark"
 }
