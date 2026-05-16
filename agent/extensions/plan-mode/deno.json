@@ -1,0 +1,8 @@
+{
+  "unstable": ["sloppy-imports"],
+  "imports": {
+    "@earendil-works/pi-coding-agent": "file:///Users/azaharias/.vite-plus/packages/@earendil-works/pi-coding-agent/lib/node_modules/@earendil-works/pi-coding-agent/dist/index.d.ts",
+    "@earendil-works/pi-ai": "file:///Users/azaharias/.vite-plus/packages/@earendil-works/pi-coding-agent/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/dist/index.d.ts",
+    "@earendil-works/pi-tui": "file:///Users/azaharias/.vite-plus/packages/@earendil-works/pi-coding-agent/lib/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-tui/dist/index.d.ts"
+  }
+}
